@@ -2,46 +2,11 @@
 
 # 一个用于生成 github hosts 的脚本
 
-domains=(
-  github.global.ssl.fastly.net
-  assets-cdn.github.com
-  avatars0.githubusercontent.com
-  avatars1.githubusercontent.com
-  documentcloud.github.com
-  gist.github.com
-  github.com
-  help.github.com
-  nodeload.github.com
-  raw.github.com
-  raw.githubusercontent.com
-  status.github.com
-  training.github.com
-  www.github.com
-  codeload.github.com
-)
-
-dnss=(
-  8.8.8.8 8.8.4.4
-  9.9.9.9 149.112.112.112
-  208.67.222.222 208.67.220.220
-  4.2.2.1 4.2.2.2
-  168.126.63.1 168.126.63.2
-  1.1.1.1 1.0.0.1
-  37.235.1.174 37.235.1.177
-  216.146.35.35 216.146.36.36
-  8.26.56.26 8.20.247.20
-  64.6.64.6 64.6.65.6
-  77.88.8.8 77.88.8.1
-  80.80.80.80 80.80.81.81
-  199.85.126.10 199.85.127.10
-  176.103.130.130
-  176.103.130.132
-  156.154.70.1 156.154.71.1
-  156.154.70.5 156.154.71.5
-  203.189.136.148
-  203.112.2.4
-  84.200.69.80 84.200.70.40
-)
+where_am_i="$( cd "$( dirname "$0"  )" && pwd  )"
+domains=$(cat $where_am_i/domains)
+dnss=$(cat $where_am_i/dnss)
+hosts_path=$where_am_i/hosts
+ping_log_path=$where_am_i/ping.log
 
 print_in_line() {
   printf "\e[2K%-s\r" "$1" >&2
@@ -54,12 +19,12 @@ print_line() {
 # 通过 host 命令查询 域名对应的 ip 地址
 # 参数：$1 域名
 find_ips() {
-  for dns in "${dnss[@]}"; do
+  for dns in $dnss; do
     {
       print_in_line "[*] host $1 $dns ..."
       local ips=$(host $1 $dns | grep 'has address' | grep -o -e '[0-9].*')
       for ip in $ips; do
-        print_in_line "[*] get ip $1 --> $ip"
+        print_in_line "[*] get ip $1 ----- $ip"
       done
       echo "$ips"
     } &
@@ -72,7 +37,7 @@ ping_test() {
   for ip in $2; do
     {
       print_in_line "ping $ip..."
-      local ping_time=$(ping -c 3 $ip | grep 'rtt' | cut -d '=' -f 2 | cut -d '/' -f 2)
+      local ping_time=$(ping -c 3 -W 1 $ip | grep 'rtt' | cut -d '=' -f 2 | cut -d '/' -f 2)
       if [ -n "$ping_time" ]; then
         print_in_line "$ping_time ms ping $ip"
         echo "$ping_time ms $ip $1"
@@ -85,10 +50,7 @@ ping_test() {
 
 test() {
   # 获取域名的所有 ip，使用 sort 命令 排序，然后用 uniq 去重
-  local ip_arr=$(find_ips $1)
-  
-  print_in_line "[*] sorting $1..."
-  ip_arr=$(echo "$ip_arr"| sort | uniq)
+  local ip_arr=$(find_ips $1 | sort | uniq)
 
   # 对 ip 地址进行测试，并根据 ping 的时间进行排序
   local ping_arr=$(ping_test $1 "${ip_arr[@]}" | sort -n)
@@ -99,40 +61,44 @@ test() {
   local ip=$(echo "$ping_fastest" | cut -d ' ' -f 3)
   local domain=$(echo "$ping_fastest" | cut -d ' ' -f 4)
 
+  echo "$ping_arr" >> $ping_log_path
 
   # 将结果写进文件
   if [ -n "$ping_fastest" ]; then
     print_line "$ping_fastest"
-    printf "%-20s%-40s # %s ms\n" "$ip" "$domain" $time >> hosts
+    printf "%-20s%-40s # %s ms\n" "$ip" "$domain" $time >>$hosts_path
   else
     print_line "timeout ... $1"
-    echo $1 >>err
+    echo $1 >>/tmp/err_hosts
   fi
 }
 
-echo '## github start ##' >hosts
-echo '' >err
+echo '## github start ##' >$hosts_path
+echo '' >/tmp/err_hosts
+echo '' >$ping_log_path
 
-for i in "${domains[@]}"; do
+for i in $domains; do
   test $i &
 done
 wait
 
 # 如果某个域名超时了，尝试再获取一遍
 echo ''
-err_list=$(cat err)
+err_list=$(cat /tmp/err_hosts)
 if [ -n "$err_list" ]; then
   echo '这些域名所查找到的 ip 都无法 ping 通：'
   echo "$err_list"
   echo '尝试重新获取...'
 
-  echo '' >err
+  echo '' >/tmp/err_hosts
   for i in $err_list; do
     test $i &
   done
   wait
 fi
-echo '## github end ##' >>hosts
-
+echo "## github end ##" >>$hosts_path
+echo "## 生成于 $(date) ##" >>$hosts_path
 
 echo 'done'
+
+less $hosts_path
