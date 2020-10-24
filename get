@@ -4,23 +4,20 @@
 
 domains=(
   github.global.ssl.fastly.net
-  github.com
   assets-cdn.github.com
+  avatars0.githubusercontent.com
+  avatars1.githubusercontent.com
   documentcloud.github.com
   gist.github.com
+  github.com
   help.github.com
   nodeload.github.com
   raw.github.com
+  raw.githubusercontent.com
   status.github.com
   training.github.com
-  avatars0.githubusercontent.com
-  avatars1.githubusercontent.com
-  api.github.com
-  raw.githubusercontent.com
-  user-images.githubusercontent.com
-  gist.githubusercontent.com
-  cloud.githubusercontent.com
-  camo.githubusercontent.com
+  www.github.com
+  codeload.github.com
 )
 
 dnss=(
@@ -60,7 +57,7 @@ find_ips() {
   for dns in "${dnss[@]}"; do
     {
       print_in_line "[*] host $1 $dns ..."
-      ips=$(host $1 $dns | grep 'has address' | grep -o -e '[0-9].*')
+      local ips=$(host $1 $dns | grep 'has address' | grep -o -e '[0-9].*')
       for ip in $ips; do
         print_in_line "[*] get ip $1 --> $ip"
       done
@@ -75,7 +72,7 @@ ping_test() {
   for ip in $2; do
     {
       print_in_line "ping $ip..."
-      ping_time=$(ping -c 3 $ip | grep 'rtt' | cut -d '=' -f 2 | cut -d '/' -f 2)
+      local ping_time=$(ping -c 3 $ip | grep 'rtt' | cut -d '=' -f 2 | cut -d '/' -f 2)
       if [ -n "$ping_time" ]; then
         print_in_line "$ping_time ms ping $ip"
         echo "$ping_time ms $ip $1"
@@ -88,19 +85,25 @@ ping_test() {
 
 test() {
   # 获取域名的所有 ip，使用 sort 命令 排序，然后用 uniq 去重
-  ip_arr=$(find_ips $1 | sort | uniq)
+  local ip_arr=$(find_ips $1)
+  
+  print_in_line "[*] sorting $1..."
+  ip_arr=$(echo "$ip_arr"| sort | uniq)
 
   # 对 ip 地址进行测试，并根据 ping 的时间进行排序
-  ping_arr=$(ping_test $1 "${ip_arr[@]}" | sort -n)
+  local ping_arr=$(ping_test $1 "${ip_arr[@]}" | sort -n)
 
   # ping_arr 里的第一行就是最快的 ip
-  ping_fastest=$(echo "$ping_arr" | head -n 1)
-  ping_fastest_host=$(echo "$ping_fastest" | cut -d ' ' -f 3,4)
+  local ping_fastest=$(echo "$ping_arr" | head -n 1)
+  local time=$(echo "$ping_fastest" | cut -d ' ' -f 1)
+  local ip=$(echo "$ping_fastest" | cut -d ' ' -f 3)
+  local domain=$(echo "$ping_fastest" | cut -d ' ' -f 4)
+
 
   # 将结果写进文件
   if [ -n "$ping_fastest" ]; then
     print_line "$ping_fastest"
-    echo "$ping_fastest_host" >>hosts
+    printf "%-20s%-40s # %s ms\n" "$ip" "$domain" $time >> hosts
   else
     print_line "timeout ... $1"
     echo $1 >>err
