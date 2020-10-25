@@ -19,7 +19,7 @@ print_ping_err() {
 }
 
 print_get_ip() {
-  printf "\e[2K    get ip %-40s --> %s\r" $1 $2  >&2
+  printf "\e[2K    get ip %-30s --> %s\r" $1 $2  >&2
 }
 
 print_time_out() {
@@ -33,6 +33,7 @@ find_ips() {
     {
       local ips=$(host $1 $dns | grep 'has address' | grep -o -e '[0-9].*')
       for ip in $ips; do
+        print_get_ip $1 $ip
         echo -e "dns: $dns\t $1 ---> $ip" >> $dns_log_path
       done
       echo "$ips"
