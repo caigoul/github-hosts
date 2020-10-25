@@ -1,19 +1,17 @@
 ## github start ##
-151.101.64.133      raw.github.com                           # 199.688 ms
-185.199.110.153     documentcloud.github.com                 # 186.988 ms
-52.69.186.44        github.com                               # 83.836 ms
-151.101.229.194     github.global.ssl.fastly.net             # 212.975 ms
-192.30.255.113      gist.github.com                          # 231.291 ms
-185.199.108.154     help.github.com                          # 194.128 ms
-52.68.31.213        codeload.github.com                      # 91.209 ms
-151.101.64.133      avatars0.githubusercontent.com           # 195.185 ms
-13.114.40.48        www.github.com                           # 96.179 ms
-52.68.31.213        nodeload.github.com                      # 92.752 ms
-185.199.108.153     assets-cdn.github.com                    # 189.613 ms
-151.101.192.133     raw.githubusercontent.com                # 233.259 ms
-185.199.111.153     training.github.com                      # 212.701 ms
-151.101.228.133     avatars1.githubusercontent.com           # 192.577 ms
-140.82.112.18       status.github.com                        # 265.765 ms
-151.101.109.194     github.global.ssl.fastly.net             # 245.933 ms
+151.101.196.133     raw.github.com                           # 220.809 ms
+185.199.108.153     training.github.com                      # 200.667 ms
+13.114.40.48        github.com                               # 107.331 ms
+185.199.110.153     assets-cdn.github.com                    # 209.286 ms
+151.101.192.133     avatars1.githubusercontent.com           # 202.917 ms
+185.199.111.154     help.github.com                          # 199.396 ms
+151.101.0.133       avatars0.githubusercontent.com           # 206.984 ms
+185.199.110.153     documentcloud.github.com                 # 205.132 ms
+151.101.24.133      raw.githubusercontent.com                # 202.682 ms
+52.68.31.213        codeload.github.com                      # 109.899 ms
+192.30.255.112      gist.github.com                          # 240.410 ms
+140.82.112.18       status.github.com                        # 284.430 ms
+52.193.111.178      nodeload.github.com                      # 129.683 ms
+151.101.25.194      github.global.ssl.fastly.net             # 195.898 ms
 ## github end ##
-## 生成于 2020年 10月 25日 星期日 01:03:01 CST ##
+## 生成于 2020年 10月 25日 星期日 12:25:32 CST ##

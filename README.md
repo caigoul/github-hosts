@@ -17,3 +17,17 @@ chmod +x ./get
 ./get
 cat hosts >> /etc/hosts
 ```
+
+## 日志
+
+- /tmp/ping.loh
+- /tmp/dns.log
+
+查看 ping 某个域名域名之后的情况：
+
+```bash
+$ cat /tmp/ping.log|grep -e 'github.global.ssl.fastly.net.*ms'
+ping 151.101.77.194      github.global.ssl.fastly.net ... 233.254 ms
+ping 151.101.25.194      github.global.ssl.fastly.net ... 195.898 ms
+ping 151.101.229.194     github.global.ssl.fastly.net ... 238.921 ms
+```
