@@ -83,7 +83,7 @@ test() {
 
 if [ ! -f "$where_am_i/dnss" ]; then
   ping_res=$(ping_test "" "$dns_list")
-  echo "$ping_res"|cut -d ' ' -f 3 >> $where_am_i/dnss
+  echo "$ping_res"|sort -n|cut -d ' ' -f 3 >> $where_am_i/dnss
   dnss=$(cat $where_am_i/dnss)
 fi
 
