@@ -1,0 +1,23 @@
+#!/bin/bash
+# 存储光标位置
+STORE_CUR="\e[s"
+# 恢复光标位置
+RESTORE_CUR="\e[u"
+# 隐藏光标
+HIDE_CUR="\e[?25l"
+# 显示光标
+SHOW_CUR="\e[?25I"
+
+print_n() {
+	local line=$1
+	((line = line+1 ))
+	printf "$RESTORE_CUR \e[${line}E $*"
+}
+
+printf "$STORE_CUR"
+printf "$HIDE_CUR"
+while true; do
+	((a = RANDOM % 3))
+	print_n $a some random num: $RANDOM~
+	sleep 0.3
+done

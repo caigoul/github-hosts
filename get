@@ -2,39 +2,47 @@
 
 # 一个用于生成 github hosts 的脚本
 
-where_am_i="$( cd "$( dirname "$0"  )" && pwd  )"
-domains=$(cat $where_am_i/domains)
+where_am_i="$(cd "$(dirname "$0")" && pwd)"
 dnss=$(cat $where_am_i/dnss)
 dns_list=$(cat $where_am_i/dns_list)
 hosts_path=$where_am_i/hosts
 ping_log_path=/tmp/ping.log
 dns_log_path=/tmp/dns.log
+domains_list=$where_am_i/domains
+err_list=/tmp/err_hosts
 
-print_ping_time() {
-  printf "\e[2K    \e[30;42m %-10s ms \e[0m %10s %s\r" $1 ' ' $2  >&2
+STORE_CUR="\e[s"   # 存储光标位置
+RESTORE_CUR="\e[u" # 恢复光标位置
+HIDE_CUR="\e[?25l" # 隐藏光标
+SHOW_CUR="\e[?25h" # 显示光标
+CLEAR_LINE="\e[2K"
+SPACE="    "
+
+# $1：行数
+print_to_n() {
+  local line="$1"
+  ((offset = line + 2))
+  echo "$RESTORE_CUR \e[${offset}E$CLEAR_LINE$SPACE"
 }
 
-print_ping_err() {
-  printf "\e[2K    \e[30;41m  %-10s   \e[0m %10s %s\r" "timeout" ' ' $1 >&2
+# $1 打印位置 $2 状态, $3 信息
+print_green() {
+  printf "$(print_to_n $1)\e[30;42m %-10s \e[0m$SPACE%s\r" "$2" "$3" >&2
 }
 
-print_get_ip() {
-  printf "\e[2K    get ip %-30s --> %s\r" $1 $2  >&2
-}
-
-print_time_out() {
-  printf "\e[2K\e[30;41m  %-10s   \e[0m %10s %s\n" "timeout" ' ' $1 >&2
+print_red() {
+  printf "$(print_to_n $1)\e[30;41m %-10s \e[0m$SPACE%s\r" "$2" "$3" >&2
 }
 
 # 通过 host 命令查询 域名对应的 ip 地址
-# 参数：$1 域名
+# 参数：$1 域名 $2 index
 find_ips() {
   for dns in $dnss; do
     {
       local ips=$(host $1 $dns | grep 'has address' | grep -o -e '[0-9].*')
       for ip in $ips; do
-        print_get_ip $1 $ip
-        echo -e "dns: $dns\t $1 ---> $ip" >> $dns_log_path
+        echo -e "dns: $dns\t $1 ---> $ip" >>$dns_log_path
+        print_green $2 "  dns" "$(printf "%-25s%s" $ip $1)"
       done
       echo "$ips"
     } &
@@ -42,29 +50,32 @@ find_ips() {
 }
 
 # ping 获得的 ip 地址
-# 参数: $1 域名 $2 ip 地址
+# 参数: $1 域名, $2 ip 地址, $3 index
 ping_test() {
   for ip in $2; do
     {
+      print_green $3 "ping" "$ip"
       local ping_time=$(ping -c 3 $ip | grep 'rtt' | cut -d '=' -f 2 | cut -d '/' -f 2)
       if [ -n "$ping_time" ]; then
-        print_ping_time $ping_time $ip
-        echo -e "ping $ip\t $1 ... $ping_time ms" >> $ping_log_path
+        print_green $3 "$ping_time ms" "$ip"
+        echo -e "ping $ip\t $1 ... $ping_time ms" >>$ping_log_path
         echo "$ping_time ms $ip $1"
       else
-        echo -e "ping $ip\t $1 ... timeout" >> $ping_log_path
-        print_ping_err $ip
+        print_red $3 "timeout" "$ip"
+        echo -e "ping $ip\t $1 ... timeout" >>$ping_log_path
       fi
     } &
   done
 }
 
+# $1 域名 $2 位置
 test() {
+  print_green $2 "start" "searching ip for $1 ..."
   # 获取域名的所有 ip，使用 sort 命令 排序，然后用 uniq 去重
-  local ip_arr=$(find_ips $1 | sort | uniq)
+  local ip_arr=$(find_ips $1 $2 | sort | uniq)
 
   # 对 ip 地址进行测试，并根据 ping 的时间进行排序
-  local ping_arr=$(ping_test $1 "${ip_arr[@]}" | sort -n)
+  local ping_arr=$(ping_test $1 "${ip_arr[@]}" $2 | sort -n)
 
   # ping_arr 里的第一行就是最快的 ip
   local ping_fastest=$(echo "$ping_arr" | head -n 1)
@@ -74,17 +85,48 @@ test() {
 
   # 将结果写进文件
   if [ -n "$ping_fastest" ]; then
-    printf "%-20s%-40s # %s ms\n" "$ip" "$domain" $time |tee -a hosts 
+    print_green $2 "$time ms" "$(printf "%-25s%s" $ip $domain)"
+    printf "%-20s%-40s # %s ms\n" "$ip" "$domain" $time >> $hosts_path
   else
-    print_time_out "$1"
-    echo $1 >>/tmp/err_hosts
+    print_red $2 "$timeout" "$(printf "%s" $domain)"
+  echo $1 >>/tmp/err_hosts
   fi
 }
 
+# $1 要扫描的文件
+run() {
+  printf $STORE_CUR
+  printf $HIDE_CUR
 
+  if [ -z "$1" ]; then
+    return 1
+  fi
+
+  local index=0
+  local domains=$(cat $1)
+  line=$(wc -l "$1" | cut -d ' ' -f 1)
+  for ((index = 0; index < $line; index = index + 1)); do
+    echo ''
+  done
+
+  index=0
+  for i in $domains; do
+    echo ''
+    test $i $index &
+    ((index = index + 1))
+  done
+  wait
+
+  printf "$(print_to_n $index)"
+  printf $SHOW_CUR
+}
+
+# 测试 dns
 if [ ! -f "$where_am_i/dnss" ]; then
-  ping_res=$(ping_test "" "$dns_list")
-  echo "$ping_res"|sort -n|cut -d ' ' -f 3 >> $where_am_i/dnss
+  echo '[*] 对 dns 进行 测试......'
+  printf $STORE_CUR
+  ping_res=$(ping_test "" "$dns_list" 1)
+  echo "$ping_res" | sort -n | cut -d ' ' -f 3 >>$where_am_i/dnss
   dnss=$(cat $where_am_i/dnss)
 fi
 
@@ -93,26 +135,20 @@ echo '' >/tmp/err_hosts
 echo '' >$ping_log_path
 echo '' >$dns_log_path
 
-for i in $domains; do
-  test $i &
-done
-wait
+run $domains_list
 
 # 如果某个域名超时了，尝试再获取一遍
 echo ''
-err_list=$(cat /tmp/err_hosts)
-if [ -n "$err_list" ]; then
-  echo '这些域名所查找到的 ip 无法 ping 通：'
-  echo "$err_list"
-  echo '尝试重新获取...'
+err_domains="$(cat $err_list)"
+if [ -n "$err_domains" ]; then
+  echo '[*] 这些域名所查找到的 ip 无法 ping 通：'
+  echo "$SPACE$err_domains"
+  echo "$SPACE尝试重新获取..."
   echo ''
-
-
+  cp   $err_list /tmp/err_hosts_bak
   echo '' >/tmp/err_hosts
-  for i in $err_list; do
-    test $i &
-  done
-  wait
+
+  run /tmp/err_hosts_bak
 fi
 echo "## github end ##" >>$hosts_path
 echo "## 生成于 $(date) ##" >>$hosts_path
