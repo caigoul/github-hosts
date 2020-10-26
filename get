@@ -21,7 +21,7 @@ SPACE="    "
 # $1：行数
 print_to_n() {
   local line="$1"
-  ((offset = line + 2))
+  ((offset = line + 1))
   echo "$RESTORE_CUR \e[${offset}E$CLEAR_LINE$SPACE"
 }
 
@@ -57,11 +57,11 @@ ping_test() {
       print_green $3 "ping" "$ip"
       local ping_time=$(ping -c 3 $ip | grep 'rtt' | cut -d '=' -f 2 | cut -d '/' -f 2)
       if [ -n "$ping_time" ]; then
-        print_green $3 "$ping_time ms" "$ip"
+        print_green $3 "$ping_time ms" "$(printf "%-25s%s" $ip "ping...")"
         echo -e "ping $ip\t $1 ... $ping_time ms" >>$ping_log_path
         echo "$ping_time ms $ip $1"
       else
-        print_red $3 "timeout" "$ip"
+        print_green $3 "$ping_time ms" "$(printf "%-25s%s" $ip "ping...")"
         echo -e "ping $ip\t $1 ... timeout" >>$ping_log_path
       fi
     } &
@@ -88,8 +88,8 @@ test() {
     print_green $2 "$time ms" "$(printf "%-25s%s" $ip $domain)"
     printf "%-20s%-40s # %s ms\n" "$ip" "$domain" $time >> $hosts_path
   else
-    print_red $2 "$timeout" "$(printf "%s" $domain)"
-  echo $1 >>/tmp/err_hosts
+    print_red $2 "timeout" "$(printf "%s" $1)"
+    echo $1 >>/tmp/err_hosts
   fi
 }
 
@@ -103,13 +103,7 @@ run() {
   fi
 
   local index=0
-  local domains=$(cat $1)
-  line=$(wc -l "$1" | cut -d ' ' -f 1)
-  for ((index = 0; index < $line; index = index + 1)); do
-    echo ''
-  done
-
-  index=0
+  local domains="$(cat $1)"
   for i in $domains; do
     echo ''
     test $i $index &
@@ -120,6 +114,8 @@ run() {
   printf "$(print_to_n $index)"
   printf $SHOW_CUR
 }
+
+trap "printf "$SHOW_CUR"" SIGINT SIGTERM
 
 # 测试 dns
 if [ ! -f "$where_am_i/dnss" ]; then
@@ -154,3 +150,7 @@ echo "## github end ##" >>$hosts_path
 echo "## 生成于 $(date) ##" >>$hosts_path
 
 echo 'done'
+
+read
+
+cat $hosts_path
