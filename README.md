@@ -8,12 +8,17 @@
 grep cut host uniq
 ```
 
+- Arch 
+
+```
+sudo pacman -S bind
+```
+
 ## 使用
 
 ```bash
 git clone https://github.com/caigoul/github-hosts
 cd github-hosts
-chmod +x ./get
 ./get
 cat hosts >> /etc/hosts
 ```
